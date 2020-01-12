@@ -1,4 +1,4 @@
 return {
 	std = 'lua51',
-	globals = {'renoise', 'rprint'},
+	globals = {'renoise', 'rprint', 'oprint'},
 }

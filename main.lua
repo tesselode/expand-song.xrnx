@@ -71,4 +71,8 @@ local function expand_pattern(pattern_index, factor)
 	end
 end
 
-expand_pattern(1, 2)
+local function expand_all_patterns(factor)
+	for pattern_index in ipairs(renoise.song().patterns) do
+		expand_pattern(pattern_index, factor)
+	end
+end
