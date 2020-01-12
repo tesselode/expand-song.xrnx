@@ -29,6 +29,20 @@ local function expand_pattern(pattern_index, factor)
 			column:clear()
 		end
 	end
+	-- get all the effects in this pattern and clear the columns
+	local effects = {}
+	for position, column in song.pattern_iterator:effect_columns_in_pattern(pattern_index) do
+		if not column.is_empty then
+			table.insert(effects, {
+				track = position.track,
+				column = position.column,
+				line = position.line,
+				number_string = column.number_string,
+				amount_value = column.amount_value,
+			})
+			column:clear()
+		end
+	end
 	-- increase the pattern length
 	pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
 	-- write the notes
@@ -44,6 +58,15 @@ local function expand_pattern(pattern_index, factor)
 			column.delay_value = delay
 			column.effect_number_value = note.effect_number_value
 			column.effect_amount_value = note.effect_amount_value
+		end
+	end
+	-- write the effects
+	for _, effect in ipairs(effects) do
+		effect.line = effect.line * factor
+		if effect.line <= renoise.Pattern.MAX_NUMBER_OF_LINES then
+			local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
+			column.number_string = effect.number_string
+			column.amount_value = effect.amount_value
 		end
 	end
 end
