@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RenoiseScriptingTool doc_version="0">
+  <ApiVersion>6</ApiVersion>
+  <Id>com.tesselode.Expander</Id>
+  <Version>1.0</Version>
+  <Author>tesselode [aminnich3@gmail.com]</Author>
+  <Name>Expander</Name>
+  <Category></Category>
+  <Description>Quickly increase the resolution of Renoise songs.</Description>
+  <Homepage>https://github.com/tesselode/renoise-expander</Homepage>
+  <Platform>Windows, Mac, Linux</Platform>
+</RenoiseScriptingTool>
