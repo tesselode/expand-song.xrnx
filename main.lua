@@ -11,6 +11,11 @@ local function from_time(time)
 	return line, delay
 end
 
+local function can_expand_pattern(pattern_index, factor)
+	local pattern = renoise.song().patterns[pattern_index]
+	return pattern.number_of_lines * factor <= renoise.Pattern.MAX_NUMBER_OF_LINES
+end
+
 local function expand_pattern(pattern_index, factor)
 	local song = renoise.song()
 	local pattern = song.patterns[pattern_index]
@@ -74,10 +79,30 @@ local function expand_pattern(pattern_index, factor)
 	end
 end
 
+local function can_expand_all_patterns(factor)
+	for pattern_index in ipairs(renoise.song().patterns) do
+		if not can_expand_pattern(pattern_index, factor) then
+			return false
+		end
+	end
+	return true
+end
+
 local function expand_all_patterns(factor)
 	for pattern_index in ipairs(renoise.song().patterns) do
 		expand_pattern(pattern_index, factor)
 	end
+end
+
+local function can_adjust_sample_beat_sync_values(factor)
+	for _, instrument in ipairs(renoise.song().instruments) do
+		for _, sample in ipairs(instrument.samples) do
+			if sample.beat_sync_lines * factor > MAX_SAMPLE_BEAT_SYNC_LINES then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 local function adjust_sample_beat_sync_values(factor)
@@ -88,9 +113,95 @@ local function adjust_sample_beat_sync_values(factor)
 	end
 end
 
+local function can_adjust_transport_lpb(factor)
+	return renoise.song().transport.lpb * factor <= MAX_LPB
+end
+
 local function adjust_transport_lpb(factor)
 	renoise.song().transport.lpb = math.min(renoise.song().transport.lpb * factor, MAX_LPB)
 end
 
-print('\n\n')
-rprint(renoise.Pattern)
+local function showDialog()
+	local factor = 2
+	local vb = renoise.ViewBuilder()
+	renoise.app():show_custom_dialog('Expand song',
+		vb:column {
+			width = 300,
+			margin = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN,
+			spacing = renoise.ViewBuilder.DEFAULT_DIALOG_SPACING,
+			vb:column {
+				style = 'panel',
+				width = '100%',
+				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
+				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
+				vb:text {
+					text = 'Options',
+					font = 'bold',
+					width = '100%',
+					align = 'center',
+				},
+				vb:row {
+					spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
+					vb:text {
+						text = 'Expand song by a factor of:'
+					},
+					vb:valuebox {
+						min = 1,
+						value = factor,
+						notifier = function(value)
+							factor = value
+						end,
+					},
+				},
+				vb:row {
+					vb:checkbox {value = true},
+					vb:text {text = 'Adjust sample beat sync values'}
+				},
+				vb:row {
+					vb:checkbox {value = true},
+					vb:text {text = 'Adjust lines per beat'}
+				},
+			},
+			vb:column {
+				style = 'panel',
+				width = '100%',
+				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
+				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
+				vb:text {
+					text = 'Warnings',
+					font = 'bold',
+					width = '100%',
+					align = 'center',
+				},
+				vb:multiline_text {
+					text = 'Some patterns will be truncated. Patterns have a max length of '
+						.. renoise.Pattern.MAX_NUMBER_OF_LINES .. ' lines.',
+					width = '100%',
+					height = 32,
+				},
+				vb:multiline_text {
+					text = 'Some samples will have improperly adjusted beat sync values. Samples have a max beat sync value of '
+						.. MAX_SAMPLE_BEAT_SYNC_LINES .. ' lines.',
+					width = '100%',
+					height = 48,
+				},
+				vb:multiline_text {
+					text = 'Some LPB values will be improperly adjusted. The max LPB value is '
+						.. MAX_LPB .. ' lines.',
+					width = '100%',
+					height = 32,
+				},
+			},
+			vb:button {
+				text = 'Expand song',
+				width = '100%',
+				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
+			},
+		}
+	)
+end
+
+renoise.tool():add_menu_entry {
+	name = 'Main Menu:Tools:Expand Song...',
+	invoke = showDialog,
+}
