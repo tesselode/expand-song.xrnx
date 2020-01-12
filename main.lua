@@ -1,4 +1,5 @@
 local MAX_SAMPLE_BEAT_SYNC_LINES = 512
+local MAX_LPB = 256
 
 local function to_time(line, delay)
 	return (line - 1) * 256 + delay
@@ -87,4 +88,9 @@ local function adjust_sample_beat_sync_values(factor)
 	end
 end
 
-adjust_sample_beat_sync_values(2)
+local function adjust_transport_lpb(factor)
+	renoise.song().transport.lpb = math.min(renoise.song().transport.lpb * factor, MAX_LPB)
+end
+
+print('\n\n')
+rprint(renoise.Pattern)
