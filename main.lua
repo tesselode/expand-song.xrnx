@@ -1,3 +1,5 @@
+local MAX_SAMPLE_BEAT_SYNC_LINES = 512
+
 local function to_time(line, delay)
 	return (line - 1) * 256 + delay
 end
@@ -76,3 +78,13 @@ local function expand_all_patterns(factor)
 		expand_pattern(pattern_index, factor)
 	end
 end
+
+local function adjust_sample_beat_sync_values(factor)
+	for _, instrument in ipairs(renoise.song().instruments) do
+		for _, sample in ipairs(instrument.samples) do
+			sample.beat_sync_lines = math.min(sample.beat_sync_lines * factor, MAX_SAMPLE_BEAT_SYNC_LINES)
+		end
+	end
+end
+
+adjust_sample_beat_sync_values(2)
