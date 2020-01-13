@@ -1,5 +1,6 @@
 local MAX_SAMPLE_BEAT_SYNC_LINES = 512
 local MAX_LPB = 256
+local DIALOG_WIDTH = 300
 
 local function to_time(line, delay)
 	return (line - 1) * 256 + delay
@@ -122,11 +123,18 @@ local function adjust_transport_lpb(factor)
 end
 
 local function showDialog()
-	local factor = 2
 	local vb = renoise.ViewBuilder()
+
+	local factor = 2
+	local show_pattern_warning = not can_expand_all_patterns(factor)
+	local show_beat_sync_warning = not can_adjust_sample_beat_sync_values(factor)
+	local show_lpb_warning = not can_adjust_transport_lpb(factor)
+	local show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
+
 	renoise.app():show_custom_dialog('Expand song',
 		vb:column {
-			width = 300,
+			id = 'dialog',
+			width = DIALOG_WIDTH,
 			margin = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN,
 			spacing = renoise.ViewBuilder.DEFAULT_DIALOG_SPACING,
 			vb:column {
@@ -150,6 +158,15 @@ local function showDialog()
 						value = factor,
 						notifier = function(value)
 							factor = value
+							show_pattern_warning = not can_expand_all_patterns(factor)
+							show_beat_sync_warning = not can_adjust_sample_beat_sync_values(factor)
+							show_lpb_warning = not can_adjust_transport_lpb(factor)
+							show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
+							vb.views.pattern_warning.visible = show_pattern_warning
+							vb.views.beat_sync_warning.visible = show_beat_sync_warning
+							vb.views.lpb_warning.visible = show_lpb_warning
+							vb.views.warnings.visible = show_warnings
+							vb.views.dialog.width = DIALOG_WIDTH
 						end,
 					},
 				},
@@ -163,6 +180,8 @@ local function showDialog()
 				},
 			},
 			vb:column {
+				id = 'warnings',
+				visible = show_pattern_warning or show_beat_sync_warning or show_lpb_warning,
 				style = 'panel',
 				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
@@ -174,18 +193,24 @@ local function showDialog()
 					align = 'center',
 				},
 				vb:multiline_text {
+					id = 'pattern_warning',
+					visible = show_pattern_warning,
 					text = 'Some patterns will be truncated. Patterns have a max length of '
 						.. renoise.Pattern.MAX_NUMBER_OF_LINES .. ' lines.',
 					width = '100%',
 					height = 32,
 				},
 				vb:multiline_text {
+					id = 'beat_sync_warning',
+					visible = show_beat_sync_warning,
 					text = 'Some samples will have improperly adjusted beat sync values. Samples have a max beat sync value of '
 						.. MAX_SAMPLE_BEAT_SYNC_LINES .. ' lines.',
 					width = '100%',
 					height = 48,
 				},
 				vb:multiline_text {
+					id = 'lpb_warning',
+					visible = show_lpb_warning,
 					text = 'Some LPB values will be improperly adjusted. The max LPB value is '
 						.. MAX_LPB .. ' lines.',
 					width = '100%',
