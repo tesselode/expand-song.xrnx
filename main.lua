@@ -1,6 +1,10 @@
 local MAX_SAMPLE_BEAT_SYNC_LINES = 512
 local MAX_LPB = 256
 local DIALOG_WIDTH = 300
+local REGION = {
+	WHOLE_SONG = 1,
+	SELECTED_PATTERNS = 2,
+}
 
 local function to_time(line, delay)
 	return (line - 1) * 256 + delay
@@ -95,6 +99,25 @@ local function expand_all_patterns(factor)
 	end
 end
 
+local function can_expand_patterns(from, to, factor)
+	if from == 0 then return end
+	for pattern_index = from, to do
+		if not can_expand_pattern(pattern_index, factor) then
+			return false
+		end
+	end
+	return true
+end
+
+local function expand_patterns(from, to, factor)
+	local song = renoise.song()
+	local sequencer = song.sequencer
+	sequencer:make_range_unique(from, to)
+	for pattern_index = from, to do
+		expand_pattern(pattern_index, factor)
+	end
+end
+
 local function can_adjust_beat_sync(factor)
 	for _, instrument in ipairs(renoise.song().instruments) do
 		for _, sample in ipairs(instrument.samples) do
@@ -126,14 +149,41 @@ local function showDialog()
 	local vb = renoise.ViewBuilder()
 
 	-- settings
+	local region = REGION.WHOLE_SONG
 	local factor = 2
 	local should_adjust_beat_sync = true
 	local should_adjust_lpb = true
 
+	local function update_expand_button()
+		local button = vb.views.expand_button
+		if region == REGION.WHOLE_SONG then
+			button.active = true
+			button.text = 'Expand song'
+		elseif region == REGION.SELECTED_PATTERNS then
+			local from, to = unpack(renoise.song().sequencer.selection_range)
+			if from == 0 then
+				button.active = false
+				button.text = 'No patterns selected'
+			else
+				button.active = true
+				if from == to then
+					button.text = string.format('Expand pattern %i', from)
+				else
+					button.text = string.format('Expand patterns %i-%i', from, to)
+				end
+			end
+		end
+	end
+
 	-- warnings
 	local show_pattern_warning, show_beat_sync_warning, show_lpb_warning, show_warnings
 	local function update_warnings()
-		show_pattern_warning = not can_expand_all_patterns(factor)
+		if region == REGION.WHOLE_SONG then
+			show_pattern_warning = not can_expand_all_patterns(factor)
+		elseif region == REGION.SELECTED_PATTERNS then
+			local from, to = unpack(renoise.song().sequencer.selection_range)
+			show_pattern_warning = can_expand_patterns(from, to, factor) == false
+		end
 		show_beat_sync_warning = should_adjust_beat_sync and not can_adjust_beat_sync(factor)
 		show_lpb_warning = should_adjust_lpb and not can_adjust_lpb(factor)
 		show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
@@ -159,18 +209,47 @@ local function showDialog()
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
 				vb:text {
+					text = 'Region',
+					font = 'bold',
+					width = '100%',
+					align = 'center',
+				},
+				vb:switch {
+					width = '100%',
+					items = {'Whole song', 'Selected patterns'},
+					notifier = function(value)
+						if value == 1 then
+							region = REGION.WHOLE_SONG
+							vb.views.beat_sync_option.visible = true
+						elseif value == 2 then
+							region = REGION.SELECTED_PATTERNS
+							vb.views.beat_sync_option.visible = false
+						end
+						update_expand_button()
+						update_warnings()
+						update_warning_text()
+					end,
+				},
+			},
+			vb:column {
+				style = 'panel',
+				width = '100%',
+				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
+				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
+				vb:text {
 					text = 'Options',
 					font = 'bold',
 					width = '100%',
 					align = 'center',
 				},
-				vb:row {
+				vb:horizontal_aligner {
 					spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
+					mode = 'justify',
 					vb:text {
-						text = 'Expand song by a factor of:'
+						text = 'Factor'
 					},
 					vb:valuebox {
-						min = 1,
+						min = 2,
 						value = factor,
 						notifier = function(value)
 							factor = value
@@ -180,6 +259,7 @@ local function showDialog()
 					},
 				},
 				vb:row {
+					id = 'beat_sync_option',
 					vb:checkbox {
 						value = should_adjust_beat_sync,
 						notifier = function(value)
@@ -241,17 +321,28 @@ local function showDialog()
 				},
 			},
 			vb:button {
+				id = 'expand_button',
 				text = 'Expand song',
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
-					expand_all_patterns(factor)
-					if should_adjust_beat_sync then adjust_beat_sync(factor) end
-					if should_adjust_lpb then adjust_lpb(factor) end
+					print(region)
+					if region == REGION.WHOLE_SONG then
+						expand_all_patterns(factor)
+						if should_adjust_beat_sync then adjust_beat_sync(factor) end
+						if should_adjust_lpb then adjust_lpb(factor) end
+					elseif region == REGION.SELECTED_PATTERNS then
+						local from, to = unpack(renoise.song().sequencer.selection_range)
+						expand_patterns(from, to, factor)
+					end
 				end,
 			},
 		}
 	)
+
+	renoise.song().sequencer.selection_range_observable:add_notifier(update_expand_button)
+	renoise.song().sequencer.selection_range_observable:add_notifier(update_warnings)
+	renoise.song().sequencer.selection_range_observable:add_notifier(update_warning_text)
 end
 
 renoise.tool():add_menu_entry {
