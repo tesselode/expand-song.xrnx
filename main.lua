@@ -95,7 +95,7 @@ local function expand_all_patterns(factor)
 	end
 end
 
-local function can_adjust_sample_beat_sync_values(factor)
+local function can_adjust_beat_sync(factor)
 	for _, instrument in ipairs(renoise.song().instruments) do
 		for _, sample in ipairs(instrument.samples) do
 			if sample.beat_sync_lines * factor > MAX_SAMPLE_BEAT_SYNC_LINES then
@@ -106,7 +106,7 @@ local function can_adjust_sample_beat_sync_values(factor)
 	return true
 end
 
-local function adjust_sample_beat_sync_values(factor)
+local function adjust_beat_sync(factor)
 	for _, instrument in ipairs(renoise.song().instruments) do
 		for _, sample in ipairs(instrument.samples) do
 			sample.beat_sync_lines = math.min(sample.beat_sync_lines * factor, MAX_SAMPLE_BEAT_SYNC_LINES)
@@ -114,11 +114,11 @@ local function adjust_sample_beat_sync_values(factor)
 	end
 end
 
-local function can_adjust_transport_lpb(factor)
+local function can_adjust_lpb(factor)
 	return renoise.song().transport.lpb * factor <= MAX_LPB
 end
 
-local function adjust_transport_lpb(factor)
+local function adjust_lpb(factor)
 	renoise.song().transport.lpb = math.min(renoise.song().transport.lpb * factor, MAX_LPB)
 end
 
@@ -127,15 +127,15 @@ local function showDialog()
 
 	-- settings
 	local factor = 2
-	local adjust_beat_sync = true
-	local adjust_lpb = true
+	local should_adjust_beat_sync = true
+	local should_adjust_lpb = true
 
 	-- warnings
 	local show_pattern_warning, show_beat_sync_warning, show_lpb_warning, show_warnings
 	local function update_warnings()
 		show_pattern_warning = not can_expand_all_patterns(factor)
-		show_beat_sync_warning = adjust_beat_sync and not can_adjust_sample_beat_sync_values(factor)
-		show_lpb_warning = adjust_lpb and not can_adjust_transport_lpb(factor)
+		show_beat_sync_warning = should_adjust_beat_sync and not can_adjust_beat_sync(factor)
+		show_lpb_warning = should_adjust_lpb and not can_adjust_lpb(factor)
 		show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
 	end
 	local function update_warning_text()
@@ -181,9 +181,9 @@ local function showDialog()
 				},
 				vb:row {
 					vb:checkbox {
-						value = adjust_beat_sync,
+						value = should_adjust_beat_sync,
 						notifier = function(value)
-							adjust_beat_sync = value
+							should_adjust_beat_sync = value
 							update_warnings()
 							update_warning_text()
 						end,
@@ -192,9 +192,9 @@ local function showDialog()
 				},
 				vb:row {
 					vb:checkbox {
-						value = adjust_lpb,
+						value = should_adjust_lpb,
 						notifier = function(value)
-							adjust_lpb = value
+							should_adjust_lpb = value
 							update_warnings()
 							update_warning_text()
 						end,
@@ -244,6 +244,11 @@ local function showDialog()
 				text = 'Expand song',
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
+				notifier = function()
+					expand_all_patterns(factor)
+					if should_adjust_beat_sync then adjust_beat_sync(factor) end
+					if should_adjust_lpb then adjust_lpb(factor) end
+				end,
 			},
 		}
 	)
