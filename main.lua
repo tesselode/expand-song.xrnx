@@ -125,11 +125,27 @@ end
 local function showDialog()
 	local vb = renoise.ViewBuilder()
 
+	-- settings
 	local factor = 2
-	local show_pattern_warning = not can_expand_all_patterns(factor)
-	local show_beat_sync_warning = not can_adjust_sample_beat_sync_values(factor)
-	local show_lpb_warning = not can_adjust_transport_lpb(factor)
-	local show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
+	local adjust_beat_sync = true
+	local adjust_lpb = true
+
+	-- warnings
+	local show_pattern_warning, show_beat_sync_warning, show_lpb_warning, show_warnings
+	local function update_warnings()
+		show_pattern_warning = not can_expand_all_patterns(factor)
+		show_beat_sync_warning = adjust_beat_sync and not can_adjust_sample_beat_sync_values(factor)
+		show_lpb_warning = adjust_lpb and not can_adjust_transport_lpb(factor)
+		show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
+	end
+	local function update_warning_text()
+		vb.views.pattern_warning.visible = show_pattern_warning
+		vb.views.beat_sync_warning.visible = show_beat_sync_warning
+		vb.views.lpb_warning.visible = show_lpb_warning
+		vb.views.warnings.visible = show_warnings
+		vb.views.dialog.width = DIALOG_WIDTH
+	end
+	update_warnings()
 
 	renoise.app():show_custom_dialog('Expand song',
 		vb:column {
@@ -158,24 +174,31 @@ local function showDialog()
 						value = factor,
 						notifier = function(value)
 							factor = value
-							show_pattern_warning = not can_expand_all_patterns(factor)
-							show_beat_sync_warning = not can_adjust_sample_beat_sync_values(factor)
-							show_lpb_warning = not can_adjust_transport_lpb(factor)
-							show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
-							vb.views.pattern_warning.visible = show_pattern_warning
-							vb.views.beat_sync_warning.visible = show_beat_sync_warning
-							vb.views.lpb_warning.visible = show_lpb_warning
-							vb.views.warnings.visible = show_warnings
-							vb.views.dialog.width = DIALOG_WIDTH
+							update_warnings()
+							update_warning_text()
 						end,
 					},
 				},
 				vb:row {
-					vb:checkbox {value = true},
+					vb:checkbox {
+						value = adjust_beat_sync,
+						notifier = function(value)
+							adjust_beat_sync = value
+							update_warnings()
+							update_warning_text()
+						end,
+					},
 					vb:text {text = 'Adjust sample beat sync values'}
 				},
 				vb:row {
-					vb:checkbox {value = true},
+					vb:checkbox {
+						value = adjust_lpb,
+						notifier = function(value)
+							adjust_lpb = value
+							update_warnings()
+							update_warning_text()
+						end,
+					},
 					vb:text {text = 'Adjust lines per beat'}
 				},
 			},
