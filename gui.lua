@@ -1,206 +1,222 @@
 local constant = require 'constant'
 local expand = require 'expand'
 
-local gui = {}
+local Gui = {}
+Gui.__index = Gui
+setmetatable(Gui, {
+	__call = function(self)
+		local gui = setmetatable({}, self)
+		gui:new()
+		return gui
+	end,
+})
 
-function gui.showDialog()
-	local vb = renoise.ViewBuilder()
+function Gui:update_warnings()
+	if self.region == constant.region.whole_song then
+		self.show_pattern_warning = not expand.can_expand_all_patterns(self.factor)
+	elseif self.region == constant.region.selected_patterns then
+		local from, to = unpack(renoise.song().sequencer.selection_range)
+		self.show_pattern_warning = expand.can_expand_patterns(from, to, self.factor) == false
+	end
+	self.show_beat_sync_warning = self.should_adjust_beat_sync and not expand.can_adjust_beat_sync(self.factor)
+	self.show_lpb_warning = self.should_adjust_lpb and not expand.can_adjust_lpb(self.factor)
+	self.show_warnings = self.show_pattern_warning or self.show_beat_sync_warning or self.show_lpb_warning
+end
 
-	-- settings
-	local region = constant.region.whole_song
-	local factor = 2
-	local should_adjust_beat_sync = true
-	local should_adjust_lpb = true
+function Gui:update_warning_text()
+	self.vb.views.pattern_warning.visible = self.show_pattern_warning
+	self.vb.views.beat_sync_warning.visible = self.show_beat_sync_warning
+	self.vb.views.lpb_warning.visible = self.show_lpb_warning
+	self.vb.views.warnings.visible = self.show_warnings
+end
 
-	local function update_expand_button()
-		local button = vb.views.expand_button
-		if region == constant.region.whole_song then
+function Gui:update_expand_button()
+	local button = self.vb.views.expand_button
+	if self.region == constant.region.whole_song then
+		button.active = true
+		button.text = 'Expand song'
+	elseif self.region == constant.region.selected_patterns then
+		local from, to = unpack(renoise.song().sequencer.selection_range)
+		if from == 0 then
+			button.active = false
+			button.text = 'No patterns selected'
+		else
 			button.active = true
-			button.text = 'Expand song'
-		elseif region == constant.region.selected_patterns then
-			local from, to = unpack(renoise.song().sequencer.selection_range)
-			if from == 0 then
-				button.active = false
-				button.text = 'No patterns selected'
+			if from == to then
+				button.text = string.format('Expand pattern %i', from)
 			else
-				button.active = true
-				if from == to then
-					button.text = string.format('Expand pattern %i', from)
-				else
-					button.text = string.format('Expand patterns %i-%i', from, to)
-				end
+				button.text = string.format('Expand patterns %i-%i', from, to)
 			end
 		end
 	end
+end
 
-	-- warnings
-	local show_pattern_warning, show_beat_sync_warning, show_lpb_warning, show_warnings
-	local function update_warnings()
-		if region == constant.region.whole_song then
-			show_pattern_warning = not expand.can_expand_all_patterns(factor)
-		elseif region == constant.region.selected_patterns then
-			local from, to = unpack(renoise.song().sequencer.selection_range)
-			show_pattern_warning = expand.can_expand_patterns(from, to, factor) == false
-		end
-		show_beat_sync_warning = should_adjust_beat_sync and not expand.can_adjust_beat_sync(factor)
-		show_lpb_warning = should_adjust_lpb and not expand.can_adjust_lpb(factor)
-		show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
+function Gui:update_checkboxes()
+	self.vb.views.beat_sync_option.visible = self.region == constant.region.whole_song
+end
+
+function Gui:update()
+	self:update_warnings()
+	self:update_warning_text()
+	self:update_checkboxes()
+	self:update_expand_button()
+	self.vb.views.dialog.width = constant.dialog_width
+end
+
+function Gui:runTool()
+	if self.region == constant.region.whole_song then
+		expand.expand_all_patterns(self.factor)
+		if self.should_adjust_beat_sync then expand.adjust_beat_sync(self.factor) end
+		if self.should_adjust_lpb then expand.adjust_lpb(self.factor) end
+	elseif self.region == constant.region.selected_patterns then
+		local from, to = unpack(renoise.song().sequencer.selection_range)
+		expand.expand_patterns(from, to, self.factor)
 	end
-	local function update_warning_text()
-		vb.views.pattern_warning.visible = show_pattern_warning
-		vb.views.beat_sync_warning.visible = show_beat_sync_warning
-		vb.views.lpb_warning.visible = show_lpb_warning
-		vb.views.warnings.visible = show_warnings
-		vb.views.dialog.width = constant.dialog_width
-	end
-	update_warnings()
+end
+
+function Gui:new()
+	self.region = constant.region.whole_song
+	self.factor = 2
+	self.should_adjust_beat_sync = true
+	self.should_adjust_lpb = true
+	self.vb = renoise.ViewBuilder()
+	self:update_warnings()
 
 	renoise.app():show_custom_dialog('Expand song',
-		vb:column {
+		self.vb:column {
 			id = 'dialog',
 			width = constant.dialog_width,
 			margin = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN,
 			spacing = renoise.ViewBuilder.DEFAULT_DIALOG_SPACING,
-			vb:column {
+			self.vb:column {
 				style = 'panel',
 				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
-				vb:text {
+				self.vb:text {
 					text = 'Region',
 					font = 'bold',
 					width = '100%',
 					align = 'center',
 				},
-				vb:switch {
+				self.vb:switch {
 					width = '100%',
 					items = {'Whole song', 'Selected patterns'},
 					notifier = function(value)
 						if value == 1 then
-							region = constant.region.whole_song
-							vb.views.beat_sync_option.visible = true
+							self.region = constant.region.whole_song
 						elseif value == 2 then
-							region = constant.region.selected_patterns
-							vb.views.beat_sync_option.visible = false
+							self.region = constant.region.selected_patterns
 						end
-						update_expand_button()
-						update_warnings()
-						update_warning_text()
+						self:update()
 					end,
 				},
 			},
-			vb:column {
+			self.vb:column {
 				style = 'panel',
 				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
-				vb:text {
+				self.vb:text {
 					text = 'Options',
 					font = 'bold',
 					width = '100%',
 					align = 'center',
 				},
-				vb:horizontal_aligner {
+				self.vb:horizontal_aligner {
 					spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
 					mode = 'justify',
-					vb:text {
+					self.vb:text {
 						text = 'Factor'
 					},
-					vb:valuebox {
+					self.vb:valuebox {
 						min = 2,
-						value = factor,
+						value = self.factor,
 						notifier = function(value)
-							factor = value
-							update_warnings()
-							update_warning_text()
+							self.factor = value
+							self:update()
 						end,
 					},
 				},
-				vb:row {
+				self.vb:row {
 					id = 'beat_sync_option',
-					vb:checkbox {
-						value = should_adjust_beat_sync,
+					self.vb:checkbox {
+						value = self.should_adjust_beat_sync,
 						notifier = function(value)
-							should_adjust_beat_sync = value
-							update_warnings()
-							update_warning_text()
+							self.should_adjust_beat_sync = value
+							self:update()
 						end,
 					},
-					vb:text {text = 'Adjust sample beat sync values'}
+					self.vb:text {text = 'Adjust sample beat sync values'}
 				},
-				vb:row {
-					vb:checkbox {
-						value = should_adjust_lpb,
+				self.vb:row {
+					self.vb:checkbox {
+						value = self.should_adjust_lpb,
 						notifier = function(value)
-							should_adjust_lpb = value
-							update_warnings()
-							update_warning_text()
+							self.should_adjust_lpb = value
+							self:update()
 						end,
 					},
-					vb:text {text = 'Adjust lines per beat'}
+					self.vb:text {text = 'Adjust lines per beat'}
 				},
 			},
-			vb:column {
+			self.vb:column {
 				id = 'warnings',
-				visible = show_pattern_warning or show_beat_sync_warning or show_lpb_warning,
+				visible = self.show_pattern_warning or self.show_beat_sync_warning or self.show_lpb_warning,
 				style = 'panel',
 				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
-				vb:text {
+				self.vb:text {
 					text = 'Warnings',
 					font = 'bold',
 					width = '100%',
 					align = 'center',
 				},
-				vb:multiline_text {
+				self.vb:multiline_text {
 					id = 'pattern_warning',
-					visible = show_pattern_warning,
+					visible = self.show_pattern_warning,
 					text = 'Some patterns will be truncated. Patterns have a max length of '
 						.. renoise.Pattern.MAX_NUMBER_OF_LINES .. ' lines.',
 					width = '100%',
 					height = 32,
 				},
-				vb:multiline_text {
+				self.vb:multiline_text {
 					id = 'beat_sync_warning',
-					visible = show_beat_sync_warning,
+					visible = self.show_beat_sync_warning,
 					text = 'Some samples will have improperly adjusted beat sync values. Samples have a max beat sync value of '
 						.. constant.max_sample_beat_sync_lines .. ' lines.',
 					width = '100%',
 					height = 48,
 				},
-				vb:multiline_text {
+				self.vb:multiline_text {
 					id = 'lpb_warning',
-					visible = show_lpb_warning,
+					visible = self.show_lpb_warning,
 					text = 'Some LPB values will be improperly adjusted. The max LPB value is '
 						.. constant.max_lpb .. ' lines.',
 					width = '100%',
 					height = 32,
 				},
 			},
-			vb:button {
+			self.vb:button {
 				id = 'expand_button',
 				text = 'Expand song',
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
-				notifier = function()
-					print(region)
-					if region == constant.region.whole_song then
-						expand.expand_all_patterns(factor)
-						if should_adjust_beat_sync then expand.adjust_beat_sync(factor) end
-						if should_adjust_lpb then expand.adjust_lpb(factor) end
-					elseif region == constant.region.selected_patterns then
-						local from, to = unpack(renoise.song().sequencer.selection_range)
-						expand.expand_patterns(from, to, factor)
-					end
-				end,
+				notifier = function() self:runTool() end,
 			},
 		}
 	)
 
-	renoise.song().sequencer.selection_range_observable:add_notifier(update_expand_button)
-	renoise.song().sequencer.selection_range_observable:add_notifier(update_warnings)
-	renoise.song().sequencer.selection_range_observable:add_notifier(update_warning_text)
+	renoise.song().sequencer.selection_range_observable:add_notifier(function()
+		self:update_expand_button()
+	end)
+	renoise.song().sequencer.selection_range_observable:add_notifier(function()
+		self:update_warnings()
+	end)
+	renoise.song().sequencer.selection_range_observable:add_notifier(function()
+		self:update_warning_text()
+	end)
 end
 
-return gui
+return Gui
