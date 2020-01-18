@@ -8,6 +8,18 @@ function expand.can_expand_pattern(pattern_index, factor)
 	return pattern.number_of_lines * factor <= renoise.Pattern.MAX_NUMBER_OF_LINES
 end
 
+function expand.expand_pattern_automation(pattern_index, factor)
+	for _, pattern_track in ipairs(renoise.song().patterns[pattern_index].tracks) do
+		for _, automation in ipairs(pattern_track.automation) do
+			local points = automation.points
+			for _, point in ipairs(points) do
+				point.time = math.min((point.time - 1) * factor + 1, renoise.Pattern.MAX_NUMBER_OF_LINES)
+			end
+			automation.points = points
+		end
+	end
+end
+
 function expand.expand_pattern(pattern_index, factor)
 	local pattern = renoise.song().patterns[pattern_index]
 	-- get the notes and effects in the pattern
@@ -27,6 +39,8 @@ function expand.expand_pattern(pattern_index, factor)
 	-- write the notes and effects
 	util.write_notes_to_pattern(notes, pattern_index)
 	util.write_effects_to_pattern(effects, pattern_index)
+	-- expand automation
+	expand.expand_pattern_automation(pattern_index, factor)
 end
 
 function expand.can_expand_all_patterns(factor)
