@@ -1,1 +1,4 @@
 - Investigate bug when expanding a pattern with notes outside the visible range
+- Fix some quirks with writing ZL commands
+  - When expanding a selection in the sequencer, if there are no ZL commands in the song up to that point, then Renoise will treat the LPB at the beginning of the song as the one we just set. It would be nice if we could initialize the LPB to the original value, but we have to detect that properly
+  - The tool assumes that whatever the transport LPB is currently is the LPB at that point in the song, which is not necessarily the case, since people can change the LPB manually or scroll somewhere else in the song
