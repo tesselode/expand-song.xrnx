@@ -140,8 +140,18 @@ function expand.can_adjust_lpb(factor)
 	return renoise.song().transport.lpb * factor <= constant.max_lpb
 end
 
-function expand.adjust_lpb(factor)
-	renoise.song().transport.lpb = math.min(renoise.song().transport.lpb * factor, constant.max_lpb)
+function expand.adjust_lpb(factor, from, to)
+	local song = renoise.song()
+	if from and to then
+		local master_track_index = util.get_master_track_index()
+		local current_lpb = song.transport.lpb
+		local first_pattern_index = song.sequencer.pattern_sequence[from]
+		util.add_effect_command(first_pattern_index, master_track_index, 1, 'ZL', current_lpb * factor)
+		local last_pattern_index = song.sequencer.pattern_sequence[to + 1]
+		util.add_effect_command(last_pattern_index, master_track_index, 1, 'ZL', current_lpb)
+	else
+		song.transport.lpb = math.min(song.transport.lpb * factor, constant.max_lpb)
+	end
 end
 
 return expand

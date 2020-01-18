@@ -70,6 +70,7 @@ function Gui:runTool()
 	elseif self.region == constant.region.selected_patterns then
 		local from, to = unpack(renoise.song().sequencer.selection_range)
 		expand.expand_patterns(from, to, self.factor)
+		if self.should_adjust_lpb then expand.adjust_lpb(self.factor, from, to) end
 	end
 end
 
