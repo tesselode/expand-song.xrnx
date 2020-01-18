@@ -62,7 +62,7 @@ function Gui:update()
 	self.vb.views.dialog.width = self.dialog_width
 end
 
-function Gui:runTool()
+function Gui:run_tool()
 	if self.region == constant.region.whole_song then
 		expand.expand_all_patterns(self.factor)
 		if self.should_adjust_beat_sync then expand.adjust_beat_sync(self.factor) end
@@ -206,7 +206,7 @@ function Gui:new()
 				text = 'Expand song',
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
-				notifier = function() self:runTool() end,
+				notifier = function() self:run_tool() end,
 			},
 		}
 	)
