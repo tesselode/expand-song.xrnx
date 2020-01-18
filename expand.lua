@@ -1,4 +1,5 @@
 local constant = require 'constant'
+local util = require 'util'
 
 local function to_time(line, delay)
 	return (line - 1) * 256 + delay
@@ -97,7 +98,8 @@ end
 
 function expand.can_expand_patterns(from, to, factor)
 	if from == 0 then return end
-	for pattern_index = from, to do
+	local pattern_indices = util.get_pattern_indices_in_sequencer_range(from, to)
+	for _, pattern_index in ipairs(pattern_indices) do
 		if not expand.can_expand_pattern(pattern_index, factor) then
 			return false
 		end
@@ -109,7 +111,8 @@ function expand.expand_patterns(from, to, factor)
 	local song = renoise.song()
 	local sequencer = song.sequencer
 	sequencer:make_range_unique(from, to)
-	for pattern_index = from, to do
+	local pattern_indices = util.get_pattern_indices_in_sequencer_range(from, to)
+	for _, pattern_index in ipairs(pattern_indices) do
 		expand.expand_pattern(pattern_index, factor)
 	end
 end
