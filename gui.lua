@@ -1,7 +1,9 @@
 local constant = require 'constant'
 local expand = require 'expand'
 
-local Gui = {}
+local Gui = {
+	dialog_width = 350,
+}
 Gui.__index = Gui
 setmetatable(Gui, {
 	__call = function(self)
@@ -60,7 +62,7 @@ function Gui:update()
 	self:update_warning_text()
 	self:update_checkboxes()
 	self:update_expand_button()
-	self.vb.views.dialog.width = constant.dialog_width
+	self.vb.views.dialog.width = self.dialog_width
 end
 
 function Gui:runTool()
@@ -85,7 +87,7 @@ function Gui:new()
 	renoise.app():show_custom_dialog('Expand song',
 		self.vb:column {
 			id = 'dialog',
-			width = constant.dialog_width,
+			width = self.dialog_width,
 			margin = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN,
 			spacing = renoise.ViewBuilder.DEFAULT_DIALOG_SPACING,
 			self.vb:column {
