@@ -38,17 +38,13 @@ function Gui:update_expand_button()
 		button.active = true
 		button.text = 'Expand song'
 	elseif self.region == constant.region.selected_patterns then
-		local from, to = unpack(renoise.song().sequencer.selection_range)
+		local from = unpack(renoise.song().sequencer.selection_range)
 		if from == 0 then
 			button.active = false
 			button.text = 'No patterns selected'
 		else
 			button.active = true
-			if from == to then
-				button.text = string.format('Expand pattern %i', from)
-			else
-				button.text = string.format('Expand patterns %i-%i', from, to)
-			end
+			button.text = 'Expand selected patterns'
 		end
 	end
 end
@@ -103,7 +99,7 @@ function Gui:new()
 				},
 				self.vb:switch {
 					width = '100%',
-					items = {'Whole song', 'Selected patterns'},
+					items = {'Whole song', 'Selection in sequence'},
 					notifier = function(value)
 						if value == 1 then
 							self.region = constant.region.whole_song
