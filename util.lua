@@ -1,5 +1,10 @@
 local util = {}
 
+function util.bind(f, ...)
+	local args = {...}
+	return function() f(unpack(args)) end
+end
+
 function util.get_pattern_indices_in_sequencer_range(from, to)
 	if from == 0 then return {} end
 	local pattern_indices = {}

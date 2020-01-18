@@ -1,5 +1,6 @@
 local constant = require 'constant'
 local expand = require 'expand'
+local util = require 'util'
 
 local Gui = {
 	dialog_width = 350,
@@ -73,6 +74,9 @@ function Gui:runTool()
 end
 
 function Gui:new()
+	self.update = util.bind(self.update, self)
+	renoise.song().sequencer.selection_range_observable:add_notifier(self.update)
+
 	self.region = constant.region.whole_song
 	self.factor = 2
 	self.should_adjust_beat_sync = true
@@ -80,7 +84,7 @@ function Gui:new()
 	self.vb = renoise.ViewBuilder()
 	self:update_warnings()
 
-	renoise.app():show_custom_dialog('Expand song',
+	self.dialog = renoise.app():show_custom_dialog('Expand song',
 		self.vb:column {
 			id = 'dialog',
 			width = self.dialog_width,
@@ -205,16 +209,10 @@ function Gui:new()
 			},
 		}
 	)
+end
 
-	renoise.song().sequencer.selection_range_observable:add_notifier(function()
-		self:update_expand_button()
-	end)
-	renoise.song().sequencer.selection_range_observable:add_notifier(function()
-		self:update_warnings()
-	end)
-	renoise.song().sequencer.selection_range_observable:add_notifier(function()
-		self:update_warning_text()
-	end)
+function Gui:destroy()
+	renoise.song().sequencer.selection_range_observable:remove_notifier(self.update)
 end
 
 return Gui
