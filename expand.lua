@@ -72,7 +72,7 @@ function expand.expand_pattern(pattern_index, factor)
 	end
 	-- write the effects
 	for _, effect in ipairs(effects) do
-		effect.line = effect.line * factor
+		effect.line = (effect.line - 1) * factor + 1
 		if effect.line <= renoise.Pattern.MAX_NUMBER_OF_LINES then
 			local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
 			column.number_string = effect.number_string
