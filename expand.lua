@@ -95,7 +95,8 @@ function expand.adjust_lpb(factor, from, to)
 		local master_track_index = util.get_master_track_index()
 		local current_lpb = song.transport.lpb
 		local first_pattern_index = song.sequencer.pattern_sequence[from]
-		util.add_effect_command(first_pattern_index, master_track_index, 1, 'ZL', current_lpb * factor)
+		util.add_effect_command(first_pattern_index, master_track_index, 1, 'ZL',
+			math.min(current_lpb * factor, constant.max_lpb))
 		local last_pattern_index = song.sequencer.pattern_sequence[to + 1]
 		if last_pattern_index then
 			util.add_effect_command(last_pattern_index, master_track_index, 1, 'ZL', current_lpb)
