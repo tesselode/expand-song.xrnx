@@ -86,4 +86,11 @@ function expand.adjust_lpb(factor)
 	song.transport.lpb = math.min(song.transport.lpb * factor, constant.max_lpb)
 end
 
+function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
+	renoise.song():describe_undo 'Expand song'
+	expand.expand_all_patterns(factor)
+	if adjust_beat_sync then expand.adjust_beat_sync(factor) end
+	if adjust_lpb then expand.adjust_lpb(factor) end
+end
+
 return expand
