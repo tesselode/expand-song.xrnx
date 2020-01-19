@@ -130,6 +130,7 @@ function gui.show_dialog()
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
+					renoise.song():describe_undo 'Expand song'
 					expand.expand_all_patterns(factor)
 					if should_adjust_beat_sync then expand.adjust_beat_sync(factor) end
 					if should_adjust_lpb then expand.adjust_lpb(factor) end
