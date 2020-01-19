@@ -58,27 +58,6 @@ function expand.expand_all_patterns(factor)
 	end
 end
 
-function expand.can_expand_patterns(from, to, factor)
-	if from == 0 then return end
-	local pattern_indices = util.get_pattern_indices_in_sequencer_range(from, to)
-	for _, pattern_index in ipairs(pattern_indices) do
-		if not expand.can_expand_pattern(pattern_index, factor) then
-			return false
-		end
-	end
-	return true
-end
-
-function expand.expand_patterns(from, to, factor)
-	local song = renoise.song()
-	local sequencer = song.sequencer
-	sequencer:make_range_unique(from, to)
-	local pattern_indices = util.get_pattern_indices_in_sequencer_range(from, to)
-	for _, pattern_index in ipairs(pattern_indices) do
-		expand.expand_pattern(pattern_index, factor)
-	end
-end
-
 function expand.can_adjust_beat_sync(factor)
 	for _, instrument in ipairs(renoise.song().instruments) do
 		for _, sample in ipairs(instrument.samples) do
@@ -98,26 +77,13 @@ function expand.adjust_beat_sync(factor)
 	end
 end
 
--- TODO: add from and to arguments
 function expand.can_adjust_lpb(factor)
 	return renoise.song().transport.lpb * factor <= constant.max_lpb
 end
 
-function expand.adjust_lpb(factor, from, to)
+function expand.adjust_lpb(factor)
 	local song = renoise.song()
-	if from and to then
-		local master_track_index = util.get_master_track_index()
-		local current_lpb = song.transport.lpb
-		local first_pattern_index = song.sequencer.pattern_sequence[from]
-		util.add_effect_command(first_pattern_index, master_track_index, 1, 'ZL',
-			math.min(current_lpb * factor, constant.max_lpb))
-		local last_pattern_index = song.sequencer.pattern_sequence[to + 1]
-		if last_pattern_index then
-			util.add_effect_command(last_pattern_index, master_track_index, 1, 'ZL', current_lpb)
-		end
-	else
-		song.transport.lpb = math.min(song.transport.lpb * factor, constant.max_lpb)
-	end
+	song.transport.lpb = math.min(song.transport.lpb * factor, constant.max_lpb)
 end
 
 return expand
