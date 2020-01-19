@@ -1,152 +1,142 @@
 local constant = require 'constant'
 local expand = require 'expand'
 
-local Gui = {
-	dialog_width = 350,
-}
-Gui.__index = Gui
-setmetatable(Gui, {
-	__call = function(self)
-		local gui = setmetatable({}, self)
-		gui:new()
-		return gui
-	end,
-})
+local dialog_width = 300
 
-function Gui:update_warnings()
-	self.show_pattern_warning = not expand.can_expand_all_patterns(self.factor)
-	self.show_beat_sync_warning = self.should_adjust_beat_sync and not expand.can_adjust_beat_sync(self.factor)
-	self.show_lpb_warning = self.should_adjust_lpb and not expand.can_adjust_lpb(self.factor)
-	self.show_warnings = self.show_pattern_warning or self.show_beat_sync_warning or self.show_lpb_warning
-end
+local gui = {}
 
-function Gui:update_warning_text()
-	self.vb.views.pattern_warning.visible = self.show_pattern_warning
-	self.vb.views.beat_sync_warning.visible = self.show_beat_sync_warning
-	self.vb.views.lpb_warning.visible = self.show_lpb_warning
-	self.vb.views.warnings.visible = self.show_warnings
-end
+function gui.show_dialog()
+	local factor = 2
+	local should_adjust_beat_sync = true
+	local should_adjust_lpb = true
+	local vb = renoise.ViewBuilder()
 
-function Gui:update()
-	self:update_warnings()
-	self:update_warning_text()
-	self.vb.views.dialog.width = self.dialog_width
-end
+	local show_pattern_warning, show_beat_sync_warning, show_lpb_warning, show_warnings
 
-function Gui:run_tool()
-	expand.expand_all_patterns(self.factor)
-	if self.should_adjust_beat_sync then expand.adjust_beat_sync(self.factor) end
-	if self.should_adjust_lpb then expand.adjust_lpb(self.factor) end
-end
+	local function update_warnings()
+		show_pattern_warning = not expand.can_expand_all_patterns(factor)
+		show_beat_sync_warning = should_adjust_beat_sync and not expand.can_adjust_beat_sync(factor)
+		show_lpb_warning = should_adjust_lpb and not expand.can_adjust_lpb(factor)
+		show_warnings = show_pattern_warning or show_beat_sync_warning or show_lpb_warning
+	end
 
-function Gui:new()
-	self.factor = 2
-	self.should_adjust_beat_sync = true
-	self.should_adjust_lpb = true
-	self.vb = renoise.ViewBuilder()
-	self:update_warnings()
+	local function update_warning_text()
+		vb.views.pattern_warning.visible = show_pattern_warning
+		vb.views.beat_sync_warning.visible = show_beat_sync_warning
+		vb.views.lpb_warning.visible = show_lpb_warning
+		vb.views.warnings.visible = show_warnings
+		vb.views.dialog.width = dialog_width
+	end
 
-	self.dialog = renoise.app():show_custom_dialog('Expand song',
-		self.vb:column {
+	update_warnings()
+
+	renoise.app():show_custom_dialog('Expand song',
+		vb:column {
 			id = 'dialog',
-			width = self.dialog_width,
+			width = dialog_width,
 			margin = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN,
 			spacing = renoise.ViewBuilder.DEFAULT_DIALOG_SPACING,
-			self.vb:column {
+			vb:column {
 				style = 'panel',
 				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
-				self.vb:text {
+				vb:text {
 					text = 'Options',
 					font = 'bold',
 					width = '100%',
 					align = 'center',
 				},
-				self.vb:horizontal_aligner {
+				vb:horizontal_aligner {
 					spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
 					mode = 'justify',
-					self.vb:text {
+					vb:text {
 						text = 'Factor'
 					},
-					self.vb:valuebox {
+					vb:valuebox {
 						min = 2,
-						value = self.factor,
+						value = factor,
 						notifier = function(value)
-							self.factor = value
-							self:update()
+							factor = value
+							update_warnings()
+							update_warning_text()
 						end,
 					},
 				},
-				self.vb:row {
+				vb:row {
 					id = 'beat_sync_option',
-					self.vb:checkbox {
-						value = self.should_adjust_beat_sync,
+					vb:checkbox {
+						value = should_adjust_beat_sync,
 						notifier = function(value)
-							self.should_adjust_beat_sync = value
-							self:update()
+							should_adjust_beat_sync = value
+							update_warnings()
+							update_warning_text()
 						end,
 					},
-					self.vb:text {text = 'Adjust sample beat sync values'}
+					vb:text {text = 'Adjust sample beat sync values'}
 				},
-				self.vb:row {
-					self.vb:checkbox {
-						value = self.should_adjust_lpb,
+				vb:row {
+					vb:checkbox {
+						value = should_adjust_lpb,
 						notifier = function(value)
-							self.should_adjust_lpb = value
-							self:update()
+							should_adjust_lpb = value
+							update_warnings()
+							update_warning_text()
 						end,
 					},
-					self.vb:text {text = 'Adjust lines per beat'}
+					vb:text {text = 'Adjust lines per beat'}
 				},
 			},
-			self.vb:column {
+			vb:column {
 				id = 'warnings',
-				visible = self.show_pattern_warning or self.show_beat_sync_warning or self.show_lpb_warning,
+				visible = show_pattern_warning or show_beat_sync_warning or show_lpb_warning,
 				style = 'panel',
 				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
-				self.vb:text {
+				vb:text {
 					text = 'Warnings',
 					font = 'bold',
 					width = '100%',
 					align = 'center',
 				},
-				self.vb:multiline_text {
+				vb:multiline_text {
 					id = 'pattern_warning',
-					visible = self.show_pattern_warning,
+					visible = show_pattern_warning,
 					text = 'Some patterns will be truncated. Patterns have a max length of '
 						.. renoise.Pattern.MAX_NUMBER_OF_LINES .. ' lines.',
 					width = '100%',
 					height = 32,
 				},
-				self.vb:multiline_text {
+				vb:multiline_text {
 					id = 'beat_sync_warning',
-					visible = self.show_beat_sync_warning,
+					visible = show_beat_sync_warning,
 					text = 'Some samples will have improperly adjusted beat sync values. Samples have a max beat sync value of '
 						.. constant.max_sample_beat_sync_lines .. ' lines.',
 					width = '100%',
 					height = 48,
 				},
-				self.vb:multiline_text {
+				vb:multiline_text {
 					id = 'lpb_warning',
-					visible = self.show_lpb_warning,
+					visible = show_lpb_warning,
 					text = 'Some LPB values will be improperly adjusted. The max LPB value is '
 						.. constant.max_lpb .. ' lines.',
 					width = '100%',
 					height = 32,
 				},
 			},
-			self.vb:button {
-				id = 'expand_button',
+			vb:button {
 				text = 'Expand song',
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
-				notifier = function() self:run_tool() end,
+				notifier = function()
+					expand.expand_all_patterns(factor)
+					if should_adjust_beat_sync then expand.adjust_beat_sync(factor) end
+					if should_adjust_lpb then expand.adjust_lpb(factor) end
+				end,
 			},
 		}
 	)
 end
 
-return Gui
+return gui
