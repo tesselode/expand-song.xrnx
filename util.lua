@@ -60,7 +60,7 @@ function util.write_notes_to_pattern(notes, pattern_index)
 	local pattern = renoise.song().patterns[pattern_index]
 	for _, note in ipairs(notes) do
 		local line, delay = util.from_time(note.time)
-		if line <= renoise.Pattern.MAX_NUMBER_OF_LINES then
+		if line <= pattern.number_of_lines then
 			local column = pattern.tracks[note.track].lines[line].note_columns[note.column]
 			column.note_value = note.note_value
 			column.instrument_value = note.instrument_value
@@ -76,7 +76,7 @@ end
 function util.write_effects_to_pattern(effects, pattern_index)
 	local pattern = renoise.song().patterns[pattern_index]
 	for _, effect in ipairs(effects) do
-		if effect.line <= renoise.Pattern.MAX_NUMBER_OF_LINES then
+		if effect.line <= pattern.number_of_lines then
 			local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
 			column.number_string = effect.number_string
 			column.amount_value = effect.amount_value

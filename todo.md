@@ -1,1 +1,0 @@
-- Investigate bug when expanding a pattern with notes outside the visible range

@@ -22,13 +22,13 @@ end
 
 function expand.expand_pattern(pattern_index, factor)
 	local pattern = renoise.song().patterns[pattern_index]
+	-- increase the pattern length
+	pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
 	-- get the notes and effects in the pattern
 	local notes = util.get_notes_in_pattern(pattern_index)
 	local effects = util.get_effects_in_pattern(pattern_index)
 	-- clear the pattern
 	util.clear_columns_in_pattern(pattern_index)
-	-- increase the pattern length
-	pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
 	-- adjust note and effect times
 	for _, note in ipairs(notes) do
 		note.time = note.time * factor
