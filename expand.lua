@@ -3,12 +3,42 @@ local util = require 'util'
 
 local expand = {}
 
-function expand.expand_notes(factor)
+function expand.can_expand_pattern(pattern_index, factor)
+	local pattern = renoise.song().patterns[pattern_index]
+	return pattern.number_of_lines * factor <= renoise.Pattern.MAX_NUMBER_OF_LINES
+end
+
+function expand.can_expand_all_patterns(factor)
+	for pattern_index in ipairs(renoise.song().patterns) do
+		if not expand.can_expand_pattern(pattern_index, factor) then
+			return false
+		end
+	end
+	return true
+end
+
+function expand.can_adjust_beat_sync(factor)
+	for _, instrument in ipairs(renoise.song().instruments) do
+		for _, sample in ipairs(instrument.samples) do
+			if sample.beat_sync_lines * factor > constant.max_sample_beat_sync_lines then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+function expand.can_adjust_lpb(factor)
+	return renoise.song().transport.lpb * factor <= constant.max_lpb
+end
+
+function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 	return coroutine.create(function()
 		local song = renoise.song()
 		for pattern_index, pattern in ipairs(song.patterns) do
 			coroutine.yield(string.format('Expanding patterns... (%i / %i)',
 				pattern_index, #song.patterns))
+			song:describe_undo(string.format('Expand Pattern', pattern_index))
 			-- increase the length of each pattern
 			pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
 			-- expand the automation
@@ -24,6 +54,7 @@ function expand.expand_notes(factor)
 		end
 		-- get all the notes and effects in the song and clear the lines
 		coroutine.yield 'Reading notes and effects...'
+		song:describe_undo 'Clear Notes and Effects'
 		local notes = {}
 		local effects = {}
 		for position, line in song.pattern_iterator:lines_in_song() do
@@ -60,8 +91,11 @@ function expand.expand_notes(factor)
 		end
 		-- write the notes and effects
 		for note_index, note in ipairs(notes) do
-			coroutine.yield(string.format('Writing notes... (%i / %i)',
-				note_index, #notes))
+			if note_index == 1 or note_index % 100 == 0 then
+				coroutine.yield(string.format('Writing notes... (%i / %i)',
+					note_index, #notes))
+				song:describe_undo 'Write Notes to Pattern'
+			end
 			local pattern = song.patterns[note.pattern]
 			local line, delay = util.from_time(note.time)
 			if line <= pattern.number_of_lines then
@@ -76,8 +110,11 @@ function expand.expand_notes(factor)
 			end
 		end
 		for effect_index, effect in ipairs(effects) do
-			coroutine.yield(string.format('Writing effects... (%i / %i)',
-				effect_index, #effects))
+			if effect_index == 1 or effect_index % 100 == 0 then
+				coroutine.yield(string.format('Writing effects... (%i / %i)',
+					effect_index, #effects))
+				song:describe_undo 'Write Effects to Pattern'
+			end
 			local pattern = song.patterns[effect.pattern]
 			if effect.line <= pattern.number_of_lines then
 				local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
@@ -85,56 +122,21 @@ function expand.expand_notes(factor)
 				column.amount_value = effect.amount_value
 			end
 		end
-	end)
-end
-
-function expand.can_expand_pattern(pattern_index, factor)
-	local pattern = renoise.song().patterns[pattern_index]
-	return pattern.number_of_lines * factor <= renoise.Pattern.MAX_NUMBER_OF_LINES
-end
-
-function expand.can_expand_all_patterns(factor)
-	for pattern_index in ipairs(renoise.song().patterns) do
-		if not expand.can_expand_pattern(pattern_index, factor) then
-			return false
-		end
-	end
-	return true
-end
-
-function expand.can_adjust_beat_sync(factor)
-	for _, instrument in ipairs(renoise.song().instruments) do
-		for _, sample in ipairs(instrument.samples) do
-			if sample.beat_sync_lines * factor > constant.max_sample_beat_sync_lines then
-				return false
+		-- adjust beat sync
+		if adjust_beat_sync then
+			coroutine.yield 'Adjusting sample beat sync values...'
+			song:describe_undo 'Adjust Sample Beat Sync Values'
+			for _, instrument in ipairs(renoise.song().instruments) do
+				for _, sample in ipairs(instrument.samples) do
+					sample.beat_sync_lines = math.min(sample.beat_sync_lines * factor, constant.max_sample_beat_sync_lines)
+				end
 			end
 		end
-	end
-	return true
-end
-
-function expand.adjust_beat_sync(factor)
-	for _, instrument in ipairs(renoise.song().instruments) do
-		for _, sample in ipairs(instrument.samples) do
-			sample.beat_sync_lines = math.min(sample.beat_sync_lines * factor, constant.max_sample_beat_sync_lines)
+		-- adjust lpb
+		if adjust_lpb then
+			song.transport.lpb = math.min(song.transport.lpb * factor, constant.max_lpb)
 		end
-	end
-end
-
-function expand.can_adjust_lpb(factor)
-	return renoise.song().transport.lpb * factor <= constant.max_lpb
-end
-
-function expand.adjust_lpb(factor)
-	local song = renoise.song()
-	song.transport.lpb = math.min(song.transport.lpb * factor, constant.max_lpb)
-end
-
-function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
-	renoise.song():describe_undo 'Expand song'
-	expand.expand_notes(factor)
-	if adjust_beat_sync then expand.adjust_beat_sync(factor) end
-	if adjust_lpb then expand.adjust_lpb(factor) end
+	end)
 end
 
 return expand

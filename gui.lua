@@ -131,7 +131,7 @@ function gui.show_dialog()
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
-					local co = expand.expand_notes(factor, should_adjust_beat_sync, should_adjust_lpb)
+					local co = expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb)
 					local timer_function
 					timer_function = function()
 						if coroutine.status(co) == 'dead' then
