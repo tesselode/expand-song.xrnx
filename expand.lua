@@ -4,78 +4,88 @@ local util = require 'util'
 local expand = {}
 
 function expand.expand_notes(factor)
-	for _, pattern in ipairs(renoise.song().patterns) do
-		-- increase the length of each pattern
-		pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
-		-- expand the automation
-		for _, pattern_track in ipairs(pattern.tracks) do
-			for _, automation in ipairs(pattern_track.automation) do
-				local points = automation.points
-				for _, point in ipairs(points) do
-					point.time = math.min((point.time - 1) * factor + 1, renoise.Pattern.MAX_NUMBER_OF_LINES)
+	return coroutine.create(function()
+		local song = renoise.song()
+		for pattern_index, pattern in ipairs(song.patterns) do
+			coroutine.yield(string.format('Expanding patterns... (%i / %i)',
+				pattern_index, #song.patterns))
+			-- increase the length of each pattern
+			pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
+			-- expand the automation
+			for _, pattern_track in ipairs(pattern.tracks) do
+				for _, automation in ipairs(pattern_track.automation) do
+					local points = automation.points
+					for _, point in ipairs(points) do
+						point.time = math.min((point.time - 1) * factor + 1, renoise.Pattern.MAX_NUMBER_OF_LINES)
+					end
+					automation.points = points
 				end
-				automation.points = points
 			end
 		end
-	end
-	-- get all the notes and effects in the song and clear the lines
-	local notes = {}
-	local effects = {}
-	for position, line in renoise.song().pattern_iterator:lines_in_song() do
-		for column_index, column in ipairs(line.note_columns) do
-			if not column.is_empty then
-				table.insert(notes, {
-					pattern = position.pattern,
-					track = position.track,
-					column = column_index,
-					time = util.to_time(position.line, column.delay_value) * factor,
-					note_value = column.note_value,
-					instrument_value = column.instrument_value,
-					volume_value = column.volume_value,
-					panning_value = column.panning_value,
-					effect_number_value = column.effect_number_value,
-					effect_amount_value = column.effect_amount_value,
-				})
-				column:clear()
+		-- get all the notes and effects in the song and clear the lines
+		coroutine.yield 'Reading notes and effects...'
+		local notes = {}
+		local effects = {}
+		for position, line in song.pattern_iterator:lines_in_song() do
+			for column_index, column in ipairs(line.note_columns) do
+				if not column.is_empty then
+					table.insert(notes, {
+						pattern = position.pattern,
+						track = position.track,
+						column = column_index,
+						time = util.to_time(position.line, column.delay_value) * factor,
+						note_value = column.note_value,
+						instrument_value = column.instrument_value,
+						volume_value = column.volume_value,
+						panning_value = column.panning_value,
+						effect_number_value = column.effect_number_value,
+						effect_amount_value = column.effect_amount_value,
+					})
+					column:clear()
+				end
+			end
+			for column_index, column in ipairs(line.effect_columns) do
+				if not column.is_empty then
+					table.insert(effects, {
+						pattern = position.pattern,
+						track = position.track,
+						column = column_index,
+						line = (position.line - 1) * factor + 1,
+						number_string = column.number_string,
+						amount_value = column.amount_value,
+					})
+					column:clear()
+				end
 			end
 		end
-		for column_index, column in ipairs(line.effect_columns) do
-			if not column.is_empty then
-				table.insert(effects, {
-					pattern = position.pattern,
-					track = position.track,
-					column = column_index,
-					line = (position.line - 1) * factor + 1,
-					number_string = column.number_string,
-					amount_value = column.amount_value,
-				})
-				column:clear()
+		-- write the notes and effects
+		for note_index, note in ipairs(notes) do
+			coroutine.yield(string.format('Writing notes... (%i / %i)',
+				note_index, #notes))
+			local pattern = song.patterns[note.pattern]
+			local line, delay = util.from_time(note.time)
+			if line <= pattern.number_of_lines then
+				local column = pattern.tracks[note.track].lines[line].note_columns[note.column]
+				column.note_value = note.note_value
+				column.instrument_value = note.instrument_value
+				column.volume_value = note.volume_value
+				column.panning_value = note.panning_value
+				column.delay_value = delay
+				column.effect_number_value = note.effect_number_value
+				column.effect_amount_value = note.effect_amount_value
 			end
 		end
-	end
-	-- write the notes and effects
-	for _, note in ipairs(notes) do
-		local pattern = renoise.song().patterns[note.pattern]
-		local line, delay = util.from_time(note.time)
-		if line <= pattern.number_of_lines then
-			local column = pattern.tracks[note.track].lines[line].note_columns[note.column]
-			column.note_value = note.note_value
-			column.instrument_value = note.instrument_value
-			column.volume_value = note.volume_value
-			column.panning_value = note.panning_value
-			column.delay_value = delay
-			column.effect_number_value = note.effect_number_value
-			column.effect_amount_value = note.effect_amount_value
+		for effect_index, effect in ipairs(effects) do
+			coroutine.yield(string.format('Writing effects... (%i / %i)',
+				effect_index, #effects))
+			local pattern = song.patterns[effect.pattern]
+			if effect.line <= pattern.number_of_lines then
+				local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
+				column.number_string = effect.number_string
+				column.amount_value = effect.amount_value
+			end
 		end
-	end
-	for _, effect in ipairs(effects) do
-		local pattern = renoise.song().patterns[effect.pattern]
-		if effect.line <= pattern.number_of_lines then
-			local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
-			column.number_string = effect.number_string
-			column.amount_value = effect.amount_value
-		end
-	end
+	end)
 end
 
 function expand.can_expand_pattern(pattern_index, factor)

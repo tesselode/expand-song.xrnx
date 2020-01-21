@@ -126,11 +126,25 @@ function gui.show_dialog()
 				},
 			},
 			vb:button {
+				id = 'expand_song_button',
 				text = 'Expand song',
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
-					expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb)
+					local co = expand.expand_notes(factor, should_adjust_beat_sync, should_adjust_lpb)
+					local timer_function
+					timer_function = function()
+						if coroutine.status(co) == 'dead' then
+							renoise.tool():remove_timer(timer_function)
+							vb.views.expand_song_button.text = 'Expand song'
+							return
+						end
+						local _, progress = coroutine.resume(co)
+						if type(progress) == 'string' then
+							vb.views.expand_song_button.text = progress
+						end
+					end
+					renoise.tool():add_timer(timer_function, 1)
 				end,
 			},
 		}
