@@ -36,9 +36,9 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 	return coroutine.create(function()
 		local song = renoise.song()
 		for pattern_index, pattern in ipairs(song.patterns) do
-			coroutine.yield(string.format('Expanding patterns... (%i / %i)',
-				pattern_index, #song.patterns))
-			song:describe_undo(string.format('Expand Pattern', pattern_index))
+			local progress_text = ('Expanding patterns ... (%i / %i)'):format(pattern_index, #song.patterns)
+			coroutine.yield(progress_text)
+			song:describe_undo 'Expand Pattern'
 			-- increase the length of each pattern
 			pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
 			-- expand the automation
@@ -92,8 +92,8 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 		-- write the notes and effects
 		for note_index, note in ipairs(notes) do
 			if note_index == 1 or note_index % 100 == 0 then
-				coroutine.yield(string.format('Writing notes... (%i / %i)',
-					note_index, #notes))
+				local progress_text = ('Writing notes... (%i / %i)'):format(note_index, #notes)
+				coroutine.yield(progress_text)
 				song:describe_undo 'Write Notes to Pattern'
 			end
 			local pattern = song.patterns[note.pattern]
@@ -111,8 +111,8 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 		end
 		for effect_index, effect in ipairs(effects) do
 			if effect_index == 1 or effect_index % 100 == 0 then
-				coroutine.yield(string.format('Writing effects... (%i / %i)',
-					effect_index, #effects))
+				local progress_text = ('Writing effects... (%i / %i)'):format(effect_index, #effects)
+				coroutine.yield(progress_text)
 				song:describe_undo 'Write Effects to Pattern'
 			end
 			local pattern = song.patterns[effect.pattern]
