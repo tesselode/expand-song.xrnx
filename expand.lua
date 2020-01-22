@@ -1,6 +1,8 @@
 local constant = require 'constant'
 local util = require 'util'
 
+local write_notes_step_size = 200
+
 local expand = {}
 
 function expand.can_expand_pattern(pattern_index, factor)
@@ -91,7 +93,7 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 		end
 		-- write the notes and effects
 		for note_index, note in ipairs(notes) do
-			if note_index == 1 or note_index % 100 == 0 then
+			if note_index == 1 or note_index % write_notes_step_size == 0 then
 				local progress_text = ('Writing notes... (%i / %i)'):format(note_index, #notes)
 				coroutine.yield(progress_text)
 				song:describe_undo 'Write Notes to Pattern'
@@ -110,7 +112,7 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 			end
 		end
 		for effect_index, effect in ipairs(effects) do
-			if effect_index == 1 or effect_index % 100 == 0 then
+			if effect_index == 1 or effect_index % write_notes_step_size == 0 then
 				local progress_text = ('Writing effects... (%i / %i)'):format(effect_index, #effects)
 				coroutine.yield(progress_text)
 				song:describe_undo 'Write Effects to Pattern'
