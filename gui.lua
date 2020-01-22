@@ -133,6 +133,8 @@ function gui.show_dialog()
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
+					vb.views.expand_song_button.active = false
+					vb.views.undo_button.visible = false
 					util.run_sliced(
 						expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb),
 						function(message)
@@ -145,6 +147,7 @@ function gui.show_dialog()
 						function()
 							vb.views.expand_song_button.text = 'Expand song'
 							vb.views.undo_button.visible = true
+							vb.views.expand_song_button.active = true
 							vb.views.dialog.width = dialog_width
 						end
 					)
@@ -154,8 +157,11 @@ function gui.show_dialog()
 				id = 'undo_button',
 				text = 'Undo',
 				width = '100%',
+				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				visible = false,
 				notifier = function()
+					vb.views.expand_song_button.active = false
+					vb.views.undo_button.active = false
 					util.run_sliced(
 						coroutine.create(function()
 							for i = 1, undo_steps do
@@ -175,6 +181,8 @@ function gui.show_dialog()
 						function()
 							vb.views.undo_button.text = 'Undo'
 							vb.views.undo_button.visible = false
+							vb.views.expand_song_button.active = true
+							vb.views.undo_button.active = true
 							vb.views.dialog.width = dialog_width
 							undo_steps = 0
 						end
