@@ -6,7 +6,7 @@ local write_notes_step_size = 200
 local expand = {}
 
 function expand.can_expand_pattern(pattern_index, factor)
-	local pattern = renoise.song().patterns[pattern_index]
+	local pattern = renoise.song():pattern(pattern_index)
 	return pattern.number_of_lines * factor <= renoise.Pattern.MAX_NUMBER_OF_LINES
 end
 
@@ -98,10 +98,10 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 				coroutine.yield(progress_text)
 				song:describe_undo 'Write Notes to Pattern'
 			end
-			local pattern = song.patterns[note.pattern]
+			local pattern = song:pattern(note.pattern)
 			local line, delay = util.from_time(note.time)
 			if line <= pattern.number_of_lines then
-				local column = pattern.tracks[note.track].lines[line].note_columns[note.column]
+				local column = pattern:track(note.track):line(line):note_column(note.column)
 				column.note_value = note.note_value
 				column.instrument_value = note.instrument_value
 				column.volume_value = note.volume_value
@@ -117,9 +117,9 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 				coroutine.yield(progress_text)
 				song:describe_undo 'Write Effects to Pattern'
 			end
-			local pattern = song.patterns[effect.pattern]
+			local pattern = song:pattern(effect.pattern)
 			if effect.line <= pattern.number_of_lines then
-				local column = pattern.tracks[effect.track].lines[effect.line].effect_columns[effect.column]
+				local column = pattern:track(effect.track):line(effect.line):effect_column(effect.column)
 				column.number_string = effect.number_string
 				column.amount_value = effect.amount_value
 			end
