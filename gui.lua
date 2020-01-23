@@ -1,6 +1,5 @@
 local constant = require 'constant'
 local expand = require 'expand'
-local util = require 'util'
 
 local dialog_width = 300
 
@@ -10,7 +9,6 @@ function gui.show_dialog()
 	local factor = 2
 	local should_adjust_beat_sync = true
 	local should_adjust_lpb = true
-	local undo_steps = 0
 	local vb = renoise.ViewBuilder()
 
 	local show_pattern_warning, show_beat_sync_warning, show_lpb_warning, show_warnings
@@ -133,62 +131,9 @@ function gui.show_dialog()
 				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
-					vb.views.expand_song_button.active = false
-					vb.views.undo_button.visible = false
-					util.run_sliced(
-						expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb),
-						function(message)
-							undo_steps = undo_steps + 1
-							if type(message) == 'string' then
-								vb.views.expand_song_button.text = message
-								vb.views.dialog.width = dialog_width
-							end
-						end,
-						function()
-							vb.views.expand_song_button.text = 'Expand song'
-							vb.views.undo_button.visible = true
-							vb.views.expand_song_button.active = true
-							vb.views.dialog.width = dialog_width
-						end
-					)
+					expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb)
 				end,
 			},
-			vb:button {
-				id = 'undo_button',
-				text = 'Undo',
-				width = '100%',
-				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
-				visible = false,
-				notifier = function()
-					vb.views.expand_song_button.active = false
-					vb.views.undo_button.active = false
-					util.run_sliced(
-						coroutine.create(function()
-							for i = 1, undo_steps do
-								if i == 1 or i % 4 == 0 then
-									coroutine.yield(('Undoing changes (%i / %i)'):format(
-										i, undo_steps))
-								end
-								renoise.song():undo()
-							end
-						end),
-						function(message)
-							if type(message) == 'string' then
-								vb.views.undo_button.text = message
-								vb.views.dialog.width = dialog_width
-							end
-						end,
-						function()
-							vb.views.undo_button.text = 'Undo'
-							vb.views.undo_button.visible = false
-							vb.views.expand_song_button.active = true
-							vb.views.undo_button.active = true
-							vb.views.dialog.width = dialog_width
-							undo_steps = 0
-						end
-					)
-				end,
-			}
 		}
 	)
 end
