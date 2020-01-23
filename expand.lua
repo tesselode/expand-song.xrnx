@@ -1,7 +1,7 @@
 local constant = require 'constant'
 local util = require 'util'
 
-local write_notes_step_size = 200
+local progress_time_interval = 1
 
 local expand = {}
 
@@ -35,12 +35,16 @@ function expand.can_adjust_lpb(factor)
 end
 
 function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
+	local previous_time = os.clock()
 	return coroutine.create(function()
 		local song = renoise.song()
 		for pattern_index, pattern in ipairs(song.patterns) do
-			local progress_text = ('Expanding patterns ... (%i / %i)'):format(pattern_index, #song.patterns)
-			coroutine.yield(progress_text)
-			song:describe_undo 'Expand Pattern'
+			local current_time = os.clock()
+			if current_time - previous_time > progress_time_interval then
+				local progress_text = ('Expanding patterns ... (%i / %i)'):format(pattern_index, #song.patterns)
+				coroutine.yield(progress_text)
+				previous_time = current_time
+			end
 			-- increase the length of each pattern
 			pattern.number_of_lines = math.min(pattern.number_of_lines * factor, renoise.Pattern.MAX_NUMBER_OF_LINES)
 			-- expand the automation
@@ -56,7 +60,6 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 		end
 		-- get all the notes and effects in the song and clear the lines
 		coroutine.yield 'Reading notes and effects...'
-		song:describe_undo 'Clear Notes and Effects'
 		local notes = {}
 		local effects = {}
 		for position, line in song.pattern_iterator:lines_in_song() do
@@ -93,10 +96,11 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 		end
 		-- write the notes and effects
 		for note_index, note in ipairs(notes) do
-			if note_index == 1 or note_index % write_notes_step_size == 0 then
+			local current_time = os.clock()
+			if current_time - previous_time > progress_time_interval then
 				local progress_text = ('Writing notes... (%i / %i)'):format(note_index, #notes)
 				coroutine.yield(progress_text)
-				song:describe_undo 'Write Notes to Pattern'
+				previous_time = current_time
 			end
 			local pattern = song:pattern(note.pattern)
 			local line, delay = util.from_time(note.time)
@@ -112,10 +116,11 @@ function expand.expand_song(factor, adjust_beat_sync, adjust_lpb)
 			end
 		end
 		for effect_index, effect in ipairs(effects) do
-			if effect_index == 1 or effect_index % write_notes_step_size == 0 then
+			local current_time = os.clock()
+			if current_time - previous_time > progress_time_interval then
 				local progress_text = ('Writing effects... (%i / %i)'):format(effect_index, #effects)
 				coroutine.yield(progress_text)
-				song:describe_undo 'Write Effects to Pattern'
+				previous_time = current_time
 			end
 			local pattern = song:pattern(effect.pattern)
 			if effect.line <= pattern.number_of_lines then
