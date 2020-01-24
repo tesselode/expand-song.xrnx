@@ -26,6 +26,7 @@ function gui.show_dialog()
 		vb.views.lpb_warning.visible = show_lpb_warning
 		vb.views.warnings.visible = show_warnings
 		vb.views.dialog.width = dialog_width
+		vb.views.warnings.width = dialog_width - renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN * 2 + 2
 	end
 
 	update_warnings()
@@ -91,7 +92,7 @@ function gui.show_dialog()
 				id = 'warnings',
 				visible = show_pattern_warning or show_beat_sync_warning or show_lpb_warning,
 				style = 'panel',
-				width = '100%',
+				width = dialog_width - renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN * 2 - 1,
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
 				vb:text {
