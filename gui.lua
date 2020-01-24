@@ -128,7 +128,7 @@ function gui.show_dialog()
 			vb:button {
 				id = 'expand_song_button',
 				text = 'Expand song',
-				width = '100%',
+				width = dialog_width - renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN * 2 - 1,
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
 					expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb)
