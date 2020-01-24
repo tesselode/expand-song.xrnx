@@ -1,8 +1,6 @@
 local constant = require 'constant'
 local expand = require 'expand'
 
-local dialog_width = 300
-
 local gui = {}
 
 function gui.show_dialog()
@@ -25,7 +23,6 @@ function gui.show_dialog()
 		vb.views.beat_sync_warning.visible = show_beat_sync_warning
 		vb.views.lpb_warning.visible = show_lpb_warning
 		vb.views.warnings.visible = show_warnings
-		vb.views.dialog.width = dialog_width
 	end
 
 	update_warnings()
@@ -33,12 +30,11 @@ function gui.show_dialog()
 	renoise.app():show_custom_dialog('Expand song',
 		vb:column {
 			id = 'dialog',
-			width = dialog_width,
 			margin = renoise.ViewBuilder.DEFAULT_DIALOG_MARGIN,
 			spacing = renoise.ViewBuilder.DEFAULT_DIALOG_SPACING,
+			uniform = true,
 			vb:column {
 				style = 'panel',
-				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
 				vb:text {
@@ -91,7 +87,6 @@ function gui.show_dialog()
 				id = 'warnings',
 				visible = show_pattern_warning or show_beat_sync_warning or show_lpb_warning,
 				style = 'panel',
-				width = '100%',
 				margin = renoise.ViewBuilder.DEFAULT_CONTROL_MARGIN,
 				spacing = renoise.ViewBuilder.DEFAULT_CONTROL_SPACING,
 				vb:text {
@@ -106,7 +101,7 @@ function gui.show_dialog()
 					text = 'Some patterns will be truncated. Patterns have a max length of '
 						.. renoise.Pattern.MAX_NUMBER_OF_LINES .. ' lines.',
 					width = '100%',
-					height = 32,
+					height = 48,
 				},
 				vb:multiline_text {
 					id = 'beat_sync_warning',
@@ -114,7 +109,7 @@ function gui.show_dialog()
 					text = 'Some samples will have improperly adjusted beat sync values. Samples have a max beat sync value of '
 						.. constant.max_sample_beat_sync_lines .. ' lines.',
 					width = '100%',
-					height = 48,
+					height = 64,
 				},
 				vb:multiline_text {
 					id = 'lpb_warning',
@@ -122,13 +117,12 @@ function gui.show_dialog()
 					text = 'Some LPB values will be improperly adjusted. The max LPB value is '
 						.. constant.max_lpb .. ' lines.',
 					width = '100%',
-					height = 32,
+					height = 48,
 				},
 			},
 			vb:button {
 				id = 'expand_song_button',
 				text = 'Expand song',
-				width = '100%',
 				height = renoise.ViewBuilder.DEFAULT_DIALOG_BUTTON_HEIGHT,
 				notifier = function()
 					expand.expand_song(factor, should_adjust_beat_sync, should_adjust_lpb)
